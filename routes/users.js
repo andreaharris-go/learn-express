@@ -1,6 +1,8 @@
 const express = require('express')
 const router = express.Router()
+const Joi = require('joi')
 const UserModel = require('../models/User')
+
 
 router.get('/', async (req, res) => {
   await UserModel.find()
@@ -15,28 +17,52 @@ router.get('/:id', async (req, res) => {
 })
 
 router.post('/', (req, res) => {
-  const user = new UserModel({
-    name: req.body.name,
-    email: req.body.email,
-    password: req.body.password,
+  const schema = Joi.object({
+    name: Joi.string().min(5).required(),
+    email: Joi.string().min(5).email().required(),
+    password: Joi.string().min(6).required()
   })
 
-  user.save()
-  .then(result => res.send(result))
-  .catch(err => res.send(err))
+  const { error } = schema.validate(req.body)
+  
+  if (error) {
+    res.send(error)
+  } else {
+    const user = new UserModel({
+      name: req.body.name,
+      email: req.body.email,
+      password: req.body.password
+    })
+  
+    user.save()
+    .then(result => res.send(result))
+    .catch(err => res.send(err))
+  }
 })
 
 router.patch('/:id', async (req, res) => {
-  await UserModel.updateOne(
-    { _id: req.params.id },
-    {
-      $set: {
-        'name': req.body.name
+  const schema = Joi.object({
+    name: Joi.string().min(5),
+    email: Joi.string().min(5).email(),
+    password: Joi.string().min(6)
+  })
+
+  const { error } = schema.validate(req.body)
+  
+  if (error) {
+    res.send(error)
+  } else {
+    await UserModel.updateOne(
+      { _id: req.params.id },
+      {
+        $set: {
+          'name': req.body.name
+        }
       }
-    }
-  )
-  .then(result => res.send(result))
-  .catch(err => res.send(err))
+    )
+    .then(result => res.send(result))
+    .catch(err => res.send(err))
+  }
 })
 
 router.delete('/:id', async (req, res) => {
