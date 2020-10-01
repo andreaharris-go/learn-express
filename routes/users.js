@@ -2,9 +2,16 @@ const express = require('express')
 const router = express.Router()
 const Joi = require('joi')
 const UserModel = require('../models/User')
+const bcrypt = require('bcrypt')
+const jwt = require('jsonwebtoken')
+const verifyjwt = require('./verifyjwt')
 
+router.get('/token', (req, res) => {
+  const token = jwt.sign({_id:123123}, process.env.SECRET)
+  res.send(token)
+})
 
-router.get('/', async (req, res) => {
+router.get('/', verifyjwt, async (req, res) => {
   await UserModel.find()
   .then(result => res.send(result))
   .catch(err => res.send(err))
@@ -16,7 +23,7 @@ router.get('/:id', async (req, res) => {
   .catch(err => res.send(err))
 })
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const schema = Joi.object({
     name: Joi.string().min(5).required(),
     email: Joi.string().min(5).email().required(),
@@ -25,13 +32,16 @@ router.post('/', (req, res) => {
 
   const { error } = schema.validate(req.body)
   
+  const salt = await bcrypt.genSalt(10)
+  const hashPassword = await bcrypt.hash(req.body.password, salt)
+
   if (error) {
     res.send(error)
   } else {
     const user = new UserModel({
       name: req.body.name,
       email: req.body.email,
-      password: req.body.password
+      password: hashPassword
     })
   
     user.save()
